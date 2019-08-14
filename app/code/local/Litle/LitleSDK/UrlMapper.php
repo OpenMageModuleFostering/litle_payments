@@ -27,16 +27,16 @@ class UrlMapper
 	public static function getUrl($litleEnv){
 		$litleOnlineCtx = 'vap/communicator/online';
 		if ($litleEnv == "sandbox")
-			return 'https://www.testlitle.com/sandbox/communicator/online';
-		elseif ($litleEnv == "cert")
-			return 'https://cert.litle.com/' . $litleOnlineCtx;
-		elseif ($litleEnv == "precert")
-			return 'https://precert.litle.com/' . $litleOnlineCtx;
+			return 'https://www.testvantivcnp.com/sandbox/communicator/online';
+		elseif ($litleEnv == "prelive")
+			return 'https://payments.vantivprelive.com/' . $litleOnlineCtx;
+		elseif ($litleEnv == "postlive")
+			return 'https://payments.vantivpostlive.com/' . $litleOnlineCtx;
 		elseif ($litleEnv == "production1")
-			return 'https://payments.litle.com/' . $litleOnlineCtx;
+			return 'https://payments.vantivcnp.com/' . $litleOnlineCtx;
 		elseif ($litleEnv == "production2")
-			return 'https://payments2.litle.com/' . $litleOnlineCtx;
+			return 'https://payments.vantivcnp.com/' . $litleOnlineCtx;
 		else
-			return 'https://www.testlitle.com/sandbox/communicator/online';
+			return 'https://www.testvantivcnp.com/sandbox/communicator/online';
 	}
 }

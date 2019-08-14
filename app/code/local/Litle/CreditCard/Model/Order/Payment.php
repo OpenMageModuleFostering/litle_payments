@@ -22,11 +22,6 @@ class Litle_CreditCard_Model_Order_Payment extends Mage_Sales_Model_Order_Paymen
 	//         return $this;
 	//     }
 
-    public function authorizeForLPaypal($isOnline, $amount)
-    {
-        parent::_authorize($isOnline, $amount);
-    }
-
 	protected function _reverseRefund($isOnline, $amount = null, $gatewayCallback = 'void')
 	{
 		$order = $this->getOrder();
@@ -125,23 +120,10 @@ class Litle_CreditCard_Model_Order_Payment extends Mage_Sales_Model_Order_Paymen
  			$invoice->setState(Mage_Sales_Model_Order_Invoice::STATE_CANCELED)->save();
 		}
 
+
+
 		// update transactions, order state and add comments
-        // if it's a credit card or paypal transaction, find the original auth and reopen it; if it's an echeck
-        // transaction, there is no auth transaction.
-        $authTransaction = $this->_lookupTransaction(false, Mage_Sales_Model_Order_Payment_Transaction::TYPE_AUTH);
-
-        if($authTransaction){
-            $authTransaction->setIsClosed(0)->save();
-        }
-        // reopen the order transaction for Paypal transaction
-        $orderTransaction = $this->_lookupTransaction(false, Mage_Sales_Model_Order_Payment_Transaction::TYPE_ORDER);
-
-        if($orderTransaction){
-            $orderTransaction->setIsClosed(0)->save();
-        }
-
-//        $authTransaction->setIsClosed(0)->save();
-		$transaction = $this->_addTransaction(Mage_Sales_Model_Order_Payment_Transaction::TYPE_VOID, null, true);
+		$transaction = $this->_addTransaction(Mage_Sales_Model_Order_Payment_Transaction::TYPE_AUTH, null, true);
 		$message = $this->hasMessage() ? $this->getMessage() : "Voided Capture.";
 		$message = $this->_prependMessage($message);
 		$message = $this->_appendTransactionToMessage($transaction, $message);
