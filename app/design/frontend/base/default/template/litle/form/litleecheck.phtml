@@ -3,19 +3,19 @@
     <ul id="payment_form_<?php echo $_code ?>" style="display:none">
         <li>
             <div class="input-box">
-                <label for="<?php echo $_code ?>_echeck_routing_number"><?php echo $this->__('Bank routing number') ?> <span class="required">*</span></label><br />
+                <label for="<?php echo $_code ?>_echeck_routing_number" class="required"><?php echo $this->__('Bank routing number') ?><em>*</em></label><br />
                 <input id="<?php echo $_code ?>_echeck_routing_number" name="payment[echeck_routing_number]" class="input-text required-entry">
             </div>
         </li>
         <li>
             <div class="input-box">
-                <label for="<?php echo $_code ?>_echeck_bank_acct_num"><?php echo $this->__('Bank account number') ?> <span class="required">*</span></label><br />
+                <label for="<?php echo $_code ?>_echeck_bank_acct_num" class="required"><?php echo $this->__('Bank account number') ?><em>*</em></label><br />
                 <input id="<?php echo $_code ?>_echeck_bank_acct_num" name="payment[echeck_bank_acct_num]" class="input-text required-entry">
             </div>
         </li>
         <li>
             <div class="input-box">
-                <label for="<?php echo $_code ?>_echeck_account_type"><?php echo $this->__('Account type') ?> <span class="required">*</span></label><br />
+                <label for="<?php echo $_code ?>_echeck_account_type" class="required"><?php echo $this->__('Account type') ?><em>*</em></label><br />
                 <select id="<?php echo $_code ?>_echeck_account_type" name="payment[echeck_account_type]" class="input-text required-entry">
                     <option value=""><?php echo $this->__('--Please Select--')?></option>
                 <?php $_accountType = $this->getInfoData('account_type') ?>
