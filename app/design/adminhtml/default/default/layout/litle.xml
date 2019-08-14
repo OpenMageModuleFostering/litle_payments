@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<layout>
+    <adminhtml_customer_edit>
+        <reference name="customer_edit_tabs">
+            <action method="addTab">
+                <name>my_custom_tab</name>
+                <block>palorus/adminhtml_palorus_insight_tab</block>
+            </action>
+        </reference>
+    </adminhtml_customer_edit>
+    
+    <palorus_adminhtml_myform_index>
+        <update handle="palorus_myform_index"/>
+        <reference name="content">
+            <block type="adminhtml/template" name="myform" template="palorus/myform.phtml"/>
+        </reference>
+    </palorus_adminhtml_myform_index>
+
+</layout>
