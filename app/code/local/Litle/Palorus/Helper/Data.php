@@ -37,12 +37,10 @@ class Litle_Palorus_Helper_Data extends Mage_Core_Helper_Abstract
 	}
 
 	public function getBaseUrl()
-    	{
-        	$litle = new Litle_CreditCard_Model_PaymentLogic();
-        	$url = $litle->getConfigData("url");
-        	return self::getBaseUrlFrom($url);
-   	 }
-
+	{
+		$url = Mage::getModel('creditcard/paymentlogic')->getConfigData('url');
+		return self::getBaseUrlFrom($url);
+	}
 
 	static public function getBaseUrlFrom($url)
 	{
@@ -161,18 +159,14 @@ class Litle_Palorus_Helper_Data extends Mage_Core_Helper_Abstract
 
 	static private function formatMoney($balance)
 	{
-		if ($balance === '' || $balance === NULL){
+		if ($balance === '' || $balance === NULL) {
 			$available_balance = '';
-		}
-		else{
-			$balance = str_pad($balance, 3, '0', STR_PAD_LEFT);
-			$available_balance = substr_replace($balance, '.', -2, 0);
-			$available_balance = '$' . $available_balance;
+		} else {
+			$available_balance = '$' . number_format($balance, 2);
 		}
 
 		return $available_balance;
 	}
-
 	
 	/**
 	* Returns the checkout session.
