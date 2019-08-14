@@ -162,25 +162,38 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 		return $retArray;
 	}
 
+    protected $_modelPalorusVault;
+    public function setModelPalorusVault(Litle_Palorus_Model_Vault $modelPalorusVault) {
+        $this->_modelPalorusVault = $modelPalorusVault;
+    }
+    
+    public function getModelPalorusVault() {
+        if(null === $this->_modelPalorusVault) {
+            $this->setModelPalorusVault(Mage::getModel('palorus/vault'));
+        }
+        return $this->_modelPalorusVault;
+    }
+
 	public function getTokenInfo($payment)
 	{
 		$vaultIndex = $this->getInfoInstance()->getAdditionalInformation('cc_vaulted');
-		$vaultCard = Mage::getModel('palorus/vault')->load($vaultIndex);
+		$vaultCard = $this->getModelPalorusVault()->load($vaultIndex);
 
 		$retArray = array();
-		$retArray['type'] = $vaultCard->getType();
+        $retArray['type'] = $this->litleCcTypeEnum($vaultCard);
 		$retArray['litleToken'] = $vaultCard->getToken();
 		$retArray['cardValidationNum'] = $payment->getCcCid();
-
+		
+		preg_match('/\d\d(\d\d)/', $vaultCard->getExpirationYear(), $expYear);
+        $retArray['expDate'] = sprintf('%02d%02d', $vaultCard->getExpirationMonth(), $expYear[1]);
 		$payment->setCcLast4($vaultCard->getLast4());
 		$payment->setCcType($vaultCard->getType());
 
 		return $retArray;
 	}
 
-	public function creditCardOrPaypageOrToken($payment)
+	public function creditCardOrPaypageOrToken($payment, $info)
 	{
-		$info = $this->getInfoInstance();
 		$vaultIndex = $info->getAdditionalInformation('cc_vaulted');
 		$payment_hash = array();
 		if ($vaultIndex > 0) {
@@ -264,7 +277,7 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 				'user' => $this->getConfigData('user'),
 				'password' => $this->getConfigData('password'),
 				'merchantId' => $this->getMerchantId($payment),
-				'merchantSdk' => 'Magento;8.15.0',
+				'merchantSdk' => 'Magento;8.15.2',
 				'reportGroup' => $this->getMerchantId($payment),
 				'customerId' => $order->getCustomerEmail(),
 				'url' => $this->getConfigData('url'),
@@ -325,19 +338,8 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 	public function getOrderDate(Varien_Object $payment)
 	{
 		$order = $payment->getOrder();
-		$date = $order->getCreatedAtFormated('short');
-		$date_temp = explode('/', $date);
-		$month = $date_temp['0'];
-		if ((int) $month < 10) {
-			$month = '0' . $month;
-		}
-		$day = $date_temp['1'];
-		if ((int) $day < 10) {
-			$day = '0' . $day;
-		}
-		$year_temp = explode(' ', $date_temp['2']);
-		$year = '20' . $year_temp['0'];
-		return $year . '-' . $month . '-' . $day;
+		$date = $order->getCreatedAtStoreDate();
+		return Mage::getModel('core/date')->date('Y-m-d',$date);
 	}
 
 	public function getLineItemData(Varien_Object $payment)
@@ -640,7 +642,7 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 		}
 		elseif($litleResponseCode === '370') {
 			$descriptiveMessage = "Internal System Error - Call Litle.  There is a problem with the Litle System.  Contact support@litle.com and provide the following transaction id: " . $litleTxnId; 
-			$this->showErrorForFailedTransaction($customerId, $orderId, $litleMessage, $litleResponse, $descriptiveMessage, $litleTxnIdMage_Sales_Model_Order_Payment_Transaction::TYPE_PAYMENT);
+			$this->showErrorForFailedTransaction($customerId, $orderId, $litleMessage, $litleResponse, $descriptiveMessage, $litleTxnId, Mage_Sales_Model_Order_Payment_Transaction::TYPE_PAYMENT);
 		}
 		else { 			
 			$descriptiveMessage = "Transaction was not approved and Litle's Magento extension can not tell why. Contact Litle at support@litle.com and provide the following transaction id: " . $litleTxnId; 
@@ -697,25 +699,7 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 					$info->setAdditionalInformation('orderSource', 'ecommerce');
 				}
 
-				$hash = array(
-						'orderId' => $orderId,
-						'amount' => $amountToPass,
-						'orderSource' => $info->getAdditionalInformation('orderSource'),
-						'billToAddress' => $this->getBillToAddress($payment),
-						'shipToAddress' => $this->getAddressInfo($payment),
-						'cardholderAuthentication' => $this->getFraudCheck($payment),
-						'enhancedData' => $this->getEnhancedData($payment),
-						'customBilling' => $this->getCustomBilling(
-								Mage::app()->getStore()
-									->getBaseUrl())
-				);
-
-
-
-				$payment_hash = $this->creditCardOrPaypageOrToken($payment);
-				$hash_temp = array_merge($hash, $payment_hash);
-				$merchantData = $this->merchantData($payment);
-				$hash_in = array_merge($hash_temp, $merchantData);
+                $hash_in = $this->generateAuthorizationHash($orderId, $amountToPass, $info, $payment);
 
 				$litleRequest = new LitleOnlineRequest();
 				$litleResponse = $litleRequest->authorizationRequest($hash_in);
@@ -729,6 +713,29 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 		}
 
 		return $this;
+	}
+	
+	function generateAuthorizationHash($orderId, $amountToPass, $info, $payment) {
+        $hash = array(
+                'orderId' => $orderId,
+                'id' => $orderId,
+                'amount' => $amountToPass,
+                'orderSource' => $info->getAdditionalInformation('orderSource'),
+                'billToAddress' => $this->getBillToAddress($payment),
+                'shipToAddress' => $this->getAddressInfo($payment),
+                'cardholderAuthentication' => $this->getFraudCheck($payment),
+                'enhancedData' => $this->getEnhancedData($payment),
+                'customBilling' => $this->getCustomBilling(
+                        Mage::app()->getStore()
+                            ->getBaseUrl())
+        );
+        
+        $payment_hash = $this->creditCardOrPaypageOrToken($payment, $info);
+        $hash_temp = array_merge($hash, $payment_hash);
+        $merchantData = $this->merchantData($payment);
+        $hash_in = array_merge($hash_temp, $merchantData);
+        
+        return $hash_in;
 	}
 
 	/**
@@ -777,7 +784,7 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 						'shipToAddress' => $this->getAddressInfo($payment),
 						'enhancedData' => $this->getEnhancedData($payment)
 				);
-				$payment_hash = $this->creditCardOrPaypageOrToken($payment);
+				$payment_hash = $this->creditCardOrPaypageOrToken($payment, $info);
 				$hash = array_merge($hash_temp, $payment_hash);
 			}
 			$merchantData = $this->merchantData($payment);
@@ -813,7 +820,7 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 		$amountToPass = Mage::helper('creditcard')->formatAmount($amount, true);
 		if (! empty($order)) {
 			$hash = array(
-					'litleTxnId' => $payment->getCcTransId(),
+					'litleTxnId' => $this->findCaptureLitleTxnToRefundForPayment($payment),
 					'amount' => $amountToPass
 			);
 			$merchantData = $this->merchantData($payment);
@@ -824,6 +831,11 @@ class Litle_CreditCard_Model_PaymentLogic extends Mage_Payment_Model_Method_Cc
 		$this->processResponse($payment, $litleResponse);
 
 		return $this;
+	}
+	
+	function findCaptureLitleTxnToRefundForPayment($payment) {
+	   $capture = $payment->lookupTransaction(false, Mage_Sales_Model_Order_Payment_Transaction::TYPE_CAPTURE);
+	   return $capture->getTxnId();
 	}
 
 	/**
